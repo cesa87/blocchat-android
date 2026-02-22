@@ -2,6 +2,7 @@ import '@walletconnect/react-native-compat';
 import {createAppKit} from '@reown/appkit-react-native';
 import {EthersAdapter} from '@reown/appkit-ethers-react-native';
 import {mainnet, base} from 'viem/chains';
+import {storage} from './StorageUtil';
 
 // WalletConnect Project ID — same as web app
 const projectId = 'eb5557f89dc809302437294c1e269ec9';
@@ -13,6 +14,7 @@ export const appKit = createAppKit({
   adapters: [ethersAdapter],
   networks: [base, mainnet],
   defaultNetwork: base,
+  storage,
   metadata: {
     name: 'BlocChat',
     description: 'Web3 Messaging & Commerce Platform',

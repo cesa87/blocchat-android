@@ -2,6 +2,9 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
+apply from: "../../node_modules/expo-modules-autolinking/scripts/android/autolinking_implementation.gradle"
+generateExpoModulesPackageList()
+
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
@@ -105,6 +108,14 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+
+    sourceSets {
+        main {
+            java {
+                srcDirs += ["${project.buildDir}/${generatedFilesSrcDir}"]
+            }
+        }
+    }
 }
 
 dependencies {
@@ -116,4 +127,6 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    addExpoModulesDependencies(dependencies, project)
 }

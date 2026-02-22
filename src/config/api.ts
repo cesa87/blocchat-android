@@ -1,8 +1,6 @@
 // API Configuration for React Native
 // In production, use react-native-config or a .env approach
-const API_BASE_URL = __DEV__
-  ? 'http://10.0.2.2:8080' // Android emulator localhost alias
-  : 'https://api.blocchat.xyz'; // Production URL
+const API_BASE_URL = 'https://api.blocchat.xyz';
 
 export { API_BASE_URL };
 

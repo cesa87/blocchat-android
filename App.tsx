@@ -25,7 +25,7 @@ function AppContent() {
 
   const handleChatCreated = async (conversationId: string) => {
     if (client) {
-      const convo = await client.conversations.getConversationById(
+      const convo = await client.conversations.findConversation(
         conversationId,
       );
       if (convo) {
@@ -41,7 +41,7 @@ function AppContent() {
         text: 'Refresh',
         onPress: async () => {
           if (client) {
-            await client.conversations.syncAll();
+            await client.conversations.syncAllConversations();
           }
         },
       },

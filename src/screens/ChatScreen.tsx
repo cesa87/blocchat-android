@@ -70,20 +70,37 @@ export default function ChatScreen({conversation, onBack}: ChatScreenProps) {
     }
   };
 
+  const getMessageText = (m: any): string => {
+    try {
+      // v5.x: content is a function
+      if (typeof m.content === 'function') {
+        const decoded = m.content();
+        if (typeof decoded === 'string') return decoded;
+        if (decoded?.text) return decoded.text;
+      }
+    } catch {}
+    // Fallback to nativeContent.text
+    return m.nativeContent?.text || '';
+  };
+
+  const getSentAt = (m: any): Date => {
+    if (m.sentNs) return new Date(Number(BigInt(m.sentNs) / 1000000n));
+    if (m.sentAt instanceof Date) return m.sentAt;
+    return new Date();
+  };
+
   const loadMessages = async () => {
     try {
       await conversation.sync();
       const msgs = await conversation.messages();
       // Filter system messages
       const filtered = msgs.filter((m: any) => {
-        if (typeof m.content === 'object' && m.content !== null) {
-          const c = m.content as any;
-          if (c.initiatedByInboxId || c.addedInboxes || c.removedInboxes || c.metadataFieldChanges) {
-            return false;
-          }
-        }
-        const text = typeof m.content === 'string' ? m.content : (m.content as any)?.text || '';
-        return text.trim() !== '' && text !== '{}';
+        const text = getMessageText(m);
+        if (!text.trim() || text === '{}') return false;
+        // Filter XMTP group admin system messages
+        const native = m.nativeContent || {};
+        if (native.initiatedByInboxId || native.addedInboxes || native.removedInboxes || native.metadataFieldChanges) return false;
+        return true;
       });
       setMessages(filtered.reverse()); // Reversed for inverted FlatList
     } catch (err) {
@@ -94,30 +111,23 @@ export default function ChatScreen({conversation, onBack}: ChatScreenProps) {
   };
 
   const setupStream = async () => {
-    let isActive = true;
+    let cancelStream: (() => Promise<void>) | undefined;
     try {
-      const stream = await conversation.stream();
-      for await (const message of stream) {
-        if (!isActive) break;
-        setMessages(prev => {
-          if (prev.some((m: any) => m.id === message.id)) return prev;
-          return [message, ...prev]; // Prepend for inverted list
-        });
-      }
+      cancelStream = await conversation.streamMessages(
+        (message: any) => {
+          setMessages(prev => {
+            if (prev.some((m: any) => m.id === message.id)) return prev;
+            return [message, ...prev];
+          });
+        },
+      );
     } catch (err) {
       console.error('Stream error:', err);
       // Fallback to periodic sync
-      const interval = setInterval(() => {
-        if (isActive) loadMessages();
-      }, 3000);
-      return () => {
-        isActive = false;
-        clearInterval(interval);
-      };
+      const interval = setInterval(() => loadMessages(), 3000);
+      return () => clearInterval(interval);
     }
-    return () => {
-      isActive = false;
-    };
+    return () => { cancelStream?.(); };
   };
 
   const handleSend = async () => {
@@ -125,7 +135,7 @@ export default function ChatScreen({conversation, onBack}: ChatScreenProps) {
 
     setIsSending(true);
     try {
-      await conversation.sendText(newMessage);
+      await conversation.send(newMessage);
       setNewMessage('');
       await loadMessages();
     } catch (err) {
@@ -151,12 +161,7 @@ export default function ChatScreen({conversation, onBack}: ChatScreenProps) {
   const renderMessage = useCallback(
     ({item}: {item: any}) => {
       const isMine = isMyMessage(item);
-      let messageText = '';
-      if (typeof item.content === 'string') {
-        messageText = item.content;
-      } else if (item.content && typeof item.content === 'object') {
-        messageText = (item.content as any).text || '';
-      }
+      const messageText = getMessageText(item);
 
       if (!messageText.trim()) return null;
 
@@ -175,7 +180,7 @@ export default function ChatScreen({conversation, onBack}: ChatScreenProps) {
                 <Text style={styles.paymentHash}>
                   {formatAddress(paymentData.txHash)}
                 </Text>
-                <Text style={styles.messageTime}>{formatTime(item.sentAt)}</Text>
+                <Text style={styles.messageTime}>{formatTime(getSentAt(item))}</Text>
               </View>
             </View>
           );
@@ -208,7 +213,7 @@ export default function ChatScreen({conversation, onBack}: ChatScreenProps) {
                   styles.messageTime,
                   isMine ? styles.messageTimeMine : styles.messageTimeTheirs,
                 ]}>
-                {formatTime(item.sentAt)}
+                {formatTime(getSentAt(item))}
               </Text>
               {isMine && (
                 <Text style={styles.readReceipt}>✓</Text>

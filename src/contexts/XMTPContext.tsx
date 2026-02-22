@@ -72,7 +72,7 @@ export const XMTPProvider: React.FC<{children: React.ReactNode}> = ({
 
       // Sync all conversations
       try {
-        await xmtpClient.conversations.syncAll();
+      await xmtpClient.conversations.syncAllConversations();
         console.log('Synced all conversations from network');
       } catch (syncErr) {
         console.warn('Initial conversation sync failed:', syncErr);

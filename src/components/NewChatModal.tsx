@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import {useXMTP} from '../contexts/XMTPContext';
+import {PublicIdentity} from '@xmtp/react-native-sdk';
 import {useAccount} from '@reown/appkit-react-native';
 import {API_ENDPOINTS} from '../config/api';
 import {formatSearchResult} from '../utils/profile';
@@ -66,9 +67,7 @@ export default function NewChatModal({isOpen, onClose, onChatCreated}: NewChatMo
       let conversation;
 
       if (chatType === 'group') {
-        const options: any = {};
-        if (groupName.trim()) options.groupName = groupName.trim();
-        conversation = await client.conversations.createGroup([], options);
+        conversation = await client.conversations.newGroup([], {name: groupName.trim() || undefined});
 
         if (groupName.trim() && walletAddress) {
           try {
@@ -92,19 +91,18 @@ export default function NewChatModal({isOpen, onClose, onChatCreated}: NewChatMo
         const isInboxId = address.length === 64 && /^[0-9a-f]+$/i.test(address);
 
         if (isInboxId) {
-          await client.conversations.syncAll();
-          let dm = await client.conversations.getDmByInboxId(address);
+          await client.conversations.syncAllConversations();
+          let dm = await client.conversations.findDmByInboxId(address);
           if (!dm) {
-            dm = await client.conversations.createDm(address);
+            dm = await client.conversations.findOrCreateDm(address);
           }
           conversation = dm;
         } else {
           // Assume Ethereum address
-          await client.conversations.syncAll();
-          conversation = await client.conversations.createDmWithIdentifier({
-            identifier: address.toLowerCase(),
-            identifierKind: 'ETHEREUM',
-          });
+          await client.conversations.syncAllConversations();
+          conversation = await client.conversations.findOrCreateDmWithIdentity(
+            new PublicIdentity(address.toLowerCase(), 'ETHEREUM'),
+          );
         }
       }
 

@@ -43,17 +43,26 @@ export default function ConversationListScreen({
 
   const extractPreviewText = (message: any) => {
     if (!message) return '';
-    if (typeof message.content === 'string') return message.content;
-    if (message.content && typeof message.content === 'object') {
-      return (message.content as any).text || '';
-    }
-    return '';
+    try {
+      if (typeof message.content === 'function') {
+        const decoded = message.content();
+        if (typeof decoded === 'string') return decoded;
+        if (decoded?.text) return decoded.text;
+      }
+    } catch {}
+    return message.nativeContent?.text || '';
+  };
+
+  const getSentAt = (m: any): Date => {
+    if (m.sentNs) return new Date(Number(BigInt(m.sentNs) / 1000000n));
+    if (m.sentAt instanceof Date) return m.sentAt;
+    return new Date();
   };
 
   const fetchConversations = async () => {
     if (!client) return;
     try {
-      await client.conversations.syncAll();
+      await client.conversations.syncAllConversations();
       const convos = await client.conversations.list();
       setConversations(convos);
 
@@ -109,7 +118,7 @@ export default function ConversationListScreen({
             const text = extractPreviewText(last);
             if (text) {
               previewMap.set(convo.id, text);
-              if (last?.sentAt) timeMap.set(convo.id, last.sentAt);
+              timeMap.set(convo.id, getSentAt(last));
             }
           } catch {
             /* silent */
