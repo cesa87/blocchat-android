@@ -1,0 +1,18 @@
+/**
+ * BlocChat Android — Entry Point
+ * Polyfills must be imported before anything else.
+ * @format
+ */
+
+// Required polyfills for crypto, URL, TextEncoder
+import 'react-native-get-random-values';
+import 'react-native-url-polyfill/auto';
+import 'fast-text-encoding';
+import {Buffer} from 'buffer';
+global.Buffer = global.Buffer || Buffer;
+
+import {AppRegistry} from 'react-native';
+import App from './App';
+import {name as appName} from './app.json';
+
+AppRegistry.registerComponent(appName, () => App);
